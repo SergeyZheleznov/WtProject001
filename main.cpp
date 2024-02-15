@@ -19,7 +19,7 @@ public:
 	template<typename Action>
 	void persist(Action& a)
 	{
-		Wt:Dbo::field(a, title, "title");
+		Wt::Dbo::field(a, title, "title");
 		Wt::Dbo::field(a,content, "content");
 		Wt::Dbo::belongsTo(a, author, "user");
 	}
@@ -42,7 +42,7 @@ public:
 		Wt::Dbo::field(a, name, "name");
 		Wt::Dbo::field(a, phone, "phone");
 		Wt::Dbo::field(a, karma, "karma");
-		Wt:Dbo::hasMany(a, posts, Wt::Dbo::ManyToOne, "user");
+		Wt::Dbo::hasMany(a, posts, Wt::Dbo::ManyToOne, "user");
 	}
 };
 
@@ -79,9 +79,61 @@ int main()
 		{
 			cout << "Tables already exists, sipping ... " << endl;
 		}
+	
+		// Делаем первую транзакцию
 		
-		Wt::Dbo::Transaction t(session);
+		Wt::Dbo::Transaction t1(session);
+		// транзакция работает нормально, все пользователи появляются в таблице
 
+
+		// Создаём указатели
+		unique_ptr<User> user1{ new User {"Joe", "123456", 10} };
+
+		unique_ptr<User> user2{ new User {"John", "55555", 15} };
+
+		unique_ptr<User> user3{ new User {"Joe", "123456", 100} };
+
+		// передаём в базу эти указатели
+
+		session.add(move(user1));
+		session.add(move(user2));
+		session.add(move(user3));
+
+		// делаем коммит для первой транзакции
+		t1.commit();
+
+
+		// вторая транзакция.
+
+		// Эта вторая транзакция не работает, пишет в консоли то, что ниже и нет поста в таблице post
+
+		//Hello world
+			//Tables already exists, sipping ...
+			//Query: resultValue() : more than one result
+
+	// Не могу понять, что я сделал не так, ошибка где-то есть, но я её не вижу. 
+		
+		Wt::Dbo::Transaction t2(session);
+
+		// делаем, чтобы пользователи могли делать посты
+
+
+		Wt::Dbo::ptr<User> joe = session.find<User>().where("name = ?").bind("Joe");
+
+		unique_ptr<Post> post{ new Post{} };
+		post->title = "New post";
+		post->content = "Hello and welcome!";
+
+		post->author = joe;
+
+		// Добавляем новый пост в систему
+
+		session.add(move(post));
+
+		//делаем коммит
+
+		t2.commit();
+		
 	}
 	catch (const exception& e)
 	{
